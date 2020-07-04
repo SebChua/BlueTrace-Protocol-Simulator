@@ -1,21 +1,7 @@
 import sys
 import socket
 from DataManager import DataManager
-
-def handle_login(credentials):
-    # Open credentials.txt and check for any matching lines
-    credential_file = open('credentials.txt', 'r')
-    print('Credential received:', credentials)
-    for valid_credential in credential_file:
-        username, password = valid_credential.split()
-        if username == credentials['username'] and password == credentials['password']:
-            # Found a registered user
-            print('FOUND A VALID USER')
-            print(valid_credential)
-            return True
-    print('No valid user found')
-    credential_file.close()
-    return False
+from server_helpers.LoginManager import LoginManager
 
 if len(sys.argv) != 3:
     print('Usage: {} server_port block_duration'.format(sys.argv[0]))
@@ -28,12 +14,25 @@ block_duration = int(sys.argv[2])   # Duration (seconds) user will be blocked af
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((server_IP, server_port))
 server_socket.listen(1)
+
+login_manager = LoginManager(block_duration)
+
 print('Server listening for connections.')
 
-client_socket, address = server_socket.accept()
-received_data = client_socket.recv(4096)
-if received_data:
-    credentials = DataManager.decode_object(received_data)
-    handle_login(credentials)
+while True:
+    client_socket, address = server_socket.accept()
+    received_data = client_socket.recv(4096)
+    if received_data:
+        credentials = DataManager.decode_object(received_data)
+        logged_in = login_manager.login(credentials)
+
+        if logged_in:
+            # Successful login
+            print('SUCCESSFUL LOGIN')
+            print(logged_in)
+        else:
+            # Failed login
+            print('Failed Login')
+
 
 client_socket.close()

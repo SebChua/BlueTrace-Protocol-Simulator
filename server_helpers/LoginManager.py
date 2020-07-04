@@ -8,25 +8,24 @@ class LoginManager:
         self.attempts = {}
         self.blocking_duration = blocking_duration
 
-
     def can_login(self, username):
         '''Checks if a username is blocked from logging in'''
         if username not in self.attempts:
             return True
 
         attempt_record = self.attempts.get(username)
-
         if attempt_record[0] < MAX_ATTEMPTS:
             return True
 
-        if int(attempt_record[1] - time.time()) > self.blocking_duration:
+        if int(time.time() - attempt_record[1]) > self.blocking_duration:
             # If last accessed time is longer than the blocking duration
-            del self.attempts[username]
+            self.attempts.pop(username, None)
             return True
 
+        print('Account: {} is blocked due to too many attempts', username)
+        print(self.attempts)
         return False
     
-
     def login(self, credentials):
         '''Checks if the credentials match a valid user'''
         if not self.can_login(credentials['username']):
@@ -38,16 +37,16 @@ class LoginManager:
             username, password = valid_credential.split()
             if credentials['username'] == username:
                 if credentials['password'] == password:
+                    # Successful login
                     if username in self.attempts:
                         # Clear the attempts
                         del self.attempts[username]
                     return credentials
-                attempt_record = self.attempts.get(username, (0, None))
-                self.attempts[username] = (attempt_record[0] + 1, datetime.now())
-
                 
-        
+                # Matched a valid user but wrong password
+                attempt_record = self.attempts.get(username, (0, None))
+                self.attempts[username] = (attempt_record[0] + 1, time.time())
+
+        print(self.attempts)
         credential_file.close()
         return None
-
-print('Hello world')
