@@ -53,8 +53,8 @@ class LoginManager:
         credential_file.close()
         return LoginStatus.NOMATCH
 
-class LoginStatus(enum.IntEnum):
-    SUCCESS = enum.auto()
-    NOMATCH = enum.auto()
-    WRONGPASSWORD = enum.auto()
-    BLOCKED = enum.auto()
+class LoginStatus(str, enum.Enum):
+    SUCCESS = 'Welcome to the BlueTrace Simulator.'
+    NOMATCH = 'No account connected to the given username.'
+    WRONGPASSWORD = 'Invalid Password. Please try again.'
+    BLOCKED = 'Your account has been blocked due to multiple attempts. Please try again later.'

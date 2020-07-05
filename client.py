@@ -31,20 +31,12 @@ while not logged_in:
         'password': password
     }
     client_tcp_socket.send(DataManager.encode_object(credentials))
-    print('Sent packet')
 
-    login_response = client_tcp_socket.recv(1024).decode('utf-8')
-    login_response = int(login_response.replace('"', ''))
-
+    login_response = client_tcp_socket.recv(1024).decode('utf-8').replace('"', '')
     if login_response == LoginStatus.SUCCESS:
         logged_in = True
-        print('> Welcome to the BlueTrace Simulator.')
-    elif login_response == LoginStatus.NOMATCH:
-        print('> No account connected to the given username.')
-    elif login_response == LoginStatus.WRONGPASSWORD:
-        print('> Invalid Password. Please try again.')
-    elif login_response == LoginStatus.BLOCKED:
-        print('> Your account has been blocked due to multiple attempts. Please try again.')
+
+    print('>', login_response)
 
 client_tcp_socket.close()
 client_udp_socket.close()
