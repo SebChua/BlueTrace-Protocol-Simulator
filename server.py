@@ -1,8 +1,10 @@
 import sys
 import socket
+import threading
 from DataManager import DataManager
 from server_helpers.LoginManager import LoginManager, LoginStatus
 
+# Server Initialisation
 if len(sys.argv) != 3:
     print('Usage: {} server_port block_duration'.format(sys.argv[0]))
     exit()
@@ -13,14 +15,17 @@ block_duration = int(sys.argv[2])   # Duration (seconds) user will be blocked af
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((server_IP, server_port))
-server_socket.listen(5)
-
 login_manager = LoginManager(block_duration)
 
-print('Server listening for connections.')
+def start_server():
+    global server_socket
+    server_socket.listen()
+    while True:
+        client_socket, addr = server_socket.accept()
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, addr), daemon=True)
+        client_thread.start()
 
-while True:
-    client_socket, address = server_socket.accept()
+def handle_client(client_socket, addr):
     received_data = client_socket.recv(1024)
     while received_data:
         credentials = DataManager.decode_object(received_data)
@@ -31,3 +36,9 @@ while True:
 
         # Listen for more attempts from the client
         received_data = client_socket.recv(1024)
+
+print('Server listening for connections.')
+start_server()
+
+
+    
