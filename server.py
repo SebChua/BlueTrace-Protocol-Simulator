@@ -1,7 +1,7 @@
 import sys
 import socket
 from DataManager import DataManager
-from server_helpers.LoginManager import LoginManager
+from server_helpers.LoginManager import LoginManager, LoginStatus
 
 if len(sys.argv) != 3:
     print('Usage: {} server_port block_duration'.format(sys.argv[0]))
@@ -13,7 +13,7 @@ block_duration = int(sys.argv[2])   # Duration (seconds) user will be blocked af
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((server_IP, server_port))
-server_socket.listen(1)
+server_socket.listen(5)
 
 login_manager = LoginManager(block_duration)
 
@@ -21,18 +21,13 @@ print('Server listening for connections.')
 
 while True:
     client_socket, address = server_socket.accept()
-    received_data = client_socket.recv(4096)
-    if received_data:
+    received_data = client_socket.recv(1024)
+    while received_data:
         credentials = DataManager.decode_object(received_data)
-        logged_in = login_manager.login(credentials)
+        print('Received credentials.')
+        print(credentials)
+        logged_in_status = login_manager.login(credentials)
+        client_socket.send(DataManager.encode_object(logged_in_status))
 
-        if logged_in:
-            # Successful login
-            print('SUCCESSFUL LOGIN')
-            print(logged_in)
-        else:
-            # Failed login
-            print('Failed Login')
-
-
-client_socket.close()
+        # Listen for more attempts from the client
+        received_data = client_socket.recv(1024)

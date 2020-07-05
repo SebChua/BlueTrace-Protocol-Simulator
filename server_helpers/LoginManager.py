@@ -1,4 +1,5 @@
 import time
+import enum
 
 MAX_ATTEMPTS = 3
 
@@ -29,8 +30,8 @@ class LoginManager:
     def login(self, credentials):
         '''Checks if the credentials match a valid user'''
         if not self.can_login(credentials['username']):
-            return None
-
+            return LoginStatus.BLOCKED
+    
         # Open credentials.txt and check for any matching lines
         credential_file = open('credentials.txt', 'r')
         for valid_credential in credential_file:
@@ -41,12 +42,19 @@ class LoginManager:
                     if username in self.attempts:
                         # Clear the attempts
                         del self.attempts[username]
-                    return credentials
+                    return LoginStatus.SUCCESS
                 
                 # Matched a valid user but wrong password
                 attempt_record = self.attempts.get(username, (0, None))
                 self.attempts[username] = (attempt_record[0] + 1, time.time())
+                return LoginStatus.WRONGPASSWORD
 
         print(self.attempts)
         credential_file.close()
-        return None
+        return LoginStatus.NOMATCH
+
+class LoginStatus(enum.IntEnum):
+    SUCCESS = enum.auto()
+    NOMATCH = enum.auto()
+    WRONGPASSWORD = enum.auto()
+    BLOCKED = enum.auto()
