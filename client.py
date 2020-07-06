@@ -38,7 +38,7 @@ while not logged_in:
 
     print('>', login_response)
 
-client_tcp_socket.close()
-client_udp_socket.close()
+# client_tcp_socket.close()
+# client_udp_socket.close()
 
 

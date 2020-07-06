@@ -7,6 +7,7 @@ class LoginManager:
     def __init__(self, blocking_duration):
         # Keeps track of the username, num of attempts, and last attempted time
         self.attempts = {}
+        self.logged_in = set()
         self.blocking_duration = blocking_duration
 
     def can_login(self, username):
@@ -23,7 +24,7 @@ class LoginManager:
             self.attempts.pop(username, None)
             return True
 
-        print('Account: {} is blocked due to too many attempts', username)
+        print(f'Account: {username} is blocked due to too many attempts')
         print(self.attempts)
         return False
     
@@ -42,6 +43,8 @@ class LoginManager:
                     if username in self.attempts:
                         # Clear the attempts
                         del self.attempts[username]
+                    
+                    self.logged_in.add(username)
                     return LoginStatus.SUCCESS
                 
                 # Matched a valid user but wrong password
@@ -52,6 +55,9 @@ class LoginManager:
         print(self.attempts)
         credential_file.close()
         return LoginStatus.NOMATCH
+
+    def logout(self, username):
+        self.logged_in.discard(username)
 
 class LoginStatus(str, enum.Enum):
     SUCCESS = 'Welcome to the BlueTrace Simulator.'
