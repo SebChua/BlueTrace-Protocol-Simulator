@@ -57,7 +57,7 @@ def handle_client_requests(conn, addr, username):
         print(f'> [{addr}, {username}]: ' + command)
         if command == 'logout':
             login_manager.logout(addr)
-            print(f'Logged out {username}.')
+            print(f'{username} logged out.')
             conn.close()
             break
         elif command == 'Download_tempID':

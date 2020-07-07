@@ -8,15 +8,31 @@ class TempIDManager:
         self.jobs = queue.Queue()
 
     def get_tempID(self, username):
+        '''Obtains an existing tempID or generates a new tempID for a user'''
         tempID = self.check_existing_entry(username)
         return tempID if tempID else self.generate_entry(username)
+
+    def get_username(self, tempID):
+        '''Maps a tempID to a username'''
+        with open('tempIDs.txt') as f:
+            for entry in f:
+                entry_items = entry.split()
+                entry_tempID = entry_items[1]
+                if tempID == entry_tempID:
+                    expiryDateStr = ' '.join(entry_items[-2:])
+                    expiryDate = datetime.datetime.strptime(expiryDateStr, '%Y-%m-%d %H:%M:%S')
+                    if datetime.datetime.now() < expiryDate:
+                        # Found a valid tempID for the user
+                        return entry_items[0]
+        return None
+
 
     def generate_tempID(self):
         '''Generates a random 20-byte string of numbers'''
         return ''.join(["{}".format(random.randint(0, 9)) for num in range(20)])
 
     def generate_entry(self, username):
-        '''Generates a line entry for a user and tempID pairing'''
+        '''Generates a line entry for a user and tempID pairing and queues it to be written to file'''
         tempID = self.generate_tempID()
         created = datetime.datetime.now()
         expiry = created + datetime.timedelta(minutes=15)
@@ -43,7 +59,13 @@ class TempIDManager:
                         return entry_items[1]
         return None
 
+    def listen(self):
+        '''Listen for any tempID entries that need to be written to tempIDs.txt'''
+        file_writer_thread = threading.Thread(target=self.file_writer, daemon=True)
+        file_writer_thread.start()
+
     def file_writer(self):
+        '''Worker thread for writing tempIDs to the file'''
         while True:
             # Append entry to tempID file
             entry = self.jobs.get()
@@ -52,6 +74,4 @@ class TempIDManager:
             f.close()
             self.jobs.task_done()
     
-    def listen(self):
-        file_writer_thread = threading.Thread(target=self.file_writer, daemon=True)
-        file_writer_thread.start()
+    
