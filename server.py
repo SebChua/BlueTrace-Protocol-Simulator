@@ -76,7 +76,7 @@ def handle_upload(conn, addr, username):
     log_length = conn.recv(64).decode('utf-8')
     log_length = int(log_length)
     contactlog = conn.recv(log_length).decode('utf-8')
-    print(f'Received contactlog from [{username}, {addr}]')
+    print(f'Received contactlog from [{username}, {addr}]:')
     print(contactlog)
 
 print('> Server listening for connections.')

@@ -69,11 +69,13 @@ def listen(username):
 
             # Upload contact log to server
             with open(contactlog, 'r') as f:
-                client_tcp_socket.send(f.read().encode('utf-8'))
+                log_contents = f.read()
+                client_tcp_socket.send(log_contents.encode('utf-8'))
+                print(log_contents)
 
         else:
             print('Error, invalid command. The available commands are:')
-            print(' - Download_tempId: Downloads tempmID from server')
+            print(' - Download_tempId: Downloads tempID from server')
             print(' - Upload_contact_log: Upload contact logs to the server')
             print(' - logout: Logs out fromm the server')
 
