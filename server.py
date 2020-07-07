@@ -67,10 +67,17 @@ def handle_client_requests(conn, addr, username):
             conn.send(tempID.encode('utf-8'))
         elif command == 'Upload_contact_log':
             # Uploads the contact log
-            pass
+            handle_upload(conn, addr, username)
 
         # Listen for more requests
         data = conn.recv(20)
+
+def handle_upload(conn, addr, username):
+    log_length = conn.recv(64).decode('utf-8')
+    log_length = int(log_length)
+    contactlog = conn.recv(log_length).decode('utf-8')
+    print(f'Received contactlog from [{username}, {addr}]')
+    print(contactlog)
 
 print('> Server listening for connections.')
 start_server()

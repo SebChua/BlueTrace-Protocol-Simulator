@@ -1,30 +1,10 @@
 import sys
+import os
 import socket
 from DataManager import DataManager
 from server_helpers.LoginManager import LoginStatus
 
 MAX_DELAY = 5
-
-def listen():
-    while True:
-        command = input('> ')
-
-        if command == 'logout':
-            client_tcp_socket.send('logout'.encode('utf-8'))
-            exit()
-        elif command == 'Download_tempID':
-            client_tcp_socket.send('Download_tempID'.encode('utf-8'))
-            tempID = client_tcp_socket.recv(1024).decode('utf-8')
-            print(f'TempID: {tempID}')
-
-        elif command == 'Upload_contact_log':
-            client_tcp_socket.send('Upload_contact_log'.encode('utf-8'))
-        else:
-            print('Error, invalid command. The available commands are:')
-            print(' - Download_tempId: Downloads tempmID from server')
-            print(' - Upload_contact_log: Upload contact logs to the server')
-            print(' - logout: Logs out fromm the server')
-
 
 if len(sys.argv) != 4:
     print('Usage: {} server_IP server_port client_udp_port'.format(sys.argv[0]))
@@ -42,26 +22,66 @@ client_tcp_socket.connect((server_IP, server_port))
 # Setup UDP socket for P2P Beaconing
 client_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-logged_in = False
+def login():
+    '''Attempt client login to server'''
+    global client_tcp_socket
 
-while not logged_in:
-    username = input('> Username: ')
-    password = input('> Password: ')
-    credentials = {
-        'username': username,
-        'password': password
-    }
-    client_tcp_socket.send(DataManager.encode_object(credentials))
+    while True:
+        username = input('> Username: ')
+        password = input('> Password: ')
+        credentials = {
+            'username': username,
+            'password': password
+        }
+        client_tcp_socket.send(DataManager.encode_object(credentials))
 
-    login_response = client_tcp_socket.recv(1024).decode('utf-8').replace('"', '')
-    print('>', login_response)
+        login_response = client_tcp_socket.recv(1024).decode('utf-8').replace('"', '')
+        print('>', login_response)
 
-    if login_response == LoginStatus.SUCCESS:
-        logged_in = True
-        listen()
-        break
-    elif login_response == LoginStatus.BLOCKED:
-        # Username has been blocked and prompt should exit
-        exit()
+        if login_response == LoginStatus.SUCCESS:
+            return username
+        elif login_response == LoginStatus.BLOCKED:
+            # Username has been blocked and prompt should exit
+            exit()
+
+def listen(username):
+    '''Listen for command inputs from the user'''
+    while True:
+        command = input('> ')
+
+        if command == 'logout':
+            client_tcp_socket.send('logout'.encode('utf-8'))
+            exit()
+        # TODO: CHANGE COMMAND NAME LATER to Download_tempID
+        elif command == 'download':
+            client_tcp_socket.send('Download_tempID'.encode('utf-8'))
+            tempID = client_tcp_socket.recv(1024).decode('utf-8')
+            print(f'TempID: {tempID}')
+
+        # TODO: CHANGE COMMAND NAME LATER to Upload_contact_log
+        elif command == 'upload':
+            client_tcp_socket.send('Upload_contact_log'.encode('utf-8'))
+
+            # Inform server first the size of the contact log to be sent
+            contactlog = f'{username}_contactlog.txt'
+            log_size = os.stat(contactlog).st_size
+            client_tcp_socket.send(str(log_size).encode('utf-8'))
+
+            # Upload contact log to server
+            with open(contactlog, 'r') as f:
+                client_tcp_socket.send(f.read().encode('utf-8'))
+
+        else:
+            print('Error, invalid command. The available commands are:')
+            print(' - Download_tempId: Downloads tempmID from server')
+            print(' - Upload_contact_log: Upload contact logs to the server')
+            print(' - logout: Logs out fromm the server')
+
+def start():
+    username = login()
+    if username:
+        listen(username)
+
+start()
 
 
