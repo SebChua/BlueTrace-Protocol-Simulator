@@ -7,7 +7,7 @@ class LoginManager:
     def __init__(self, blocking_duration):
         # Keeps track of the username, num of attempts, and last attempted time
         self.attempts = {}
-        self.logged_in = set()
+        self.logged_in = {}
         self.blocking_duration = blocking_duration
 
     def can_login(self, username):
@@ -28,11 +28,11 @@ class LoginManager:
         print(self.attempts)
         return False
     
-    def login(self, credentials):
+    def login(self, credentials, addr):
         '''Checks if the credentials match a valid user'''
         if not self.can_login(credentials['username']):
             return LoginStatus.BLOCKED
-    
+
         # Open credentials.txt and check for any matching lines
         credential_file = open('credentials.txt', 'r')
         for valid_credential in credential_file:
@@ -44,7 +44,7 @@ class LoginManager:
                         # Clear the attempts
                         del self.attempts[username]
                     
-                    self.logged_in.add(username)
+                    self.logged_in[addr] = username
                     return LoginStatus.SUCCESS
                 
                 # Matched a valid user but wrong password
@@ -52,12 +52,11 @@ class LoginManager:
                 self.attempts[username] = (attempt_record[0] + 1, time.time())
                 return LoginStatus.WRONGPASSWORD
 
-        print(self.attempts)
         credential_file.close()
         return LoginStatus.NOMATCH
 
-    def logout(self, username):
-        self.logged_in.discard(username)
+    def logout(self, addr):
+        self.logged_in.pop(addr)
 
 class LoginStatus(str, enum.Enum):
     SUCCESS = 'Welcome to the BlueTrace Simulator.'

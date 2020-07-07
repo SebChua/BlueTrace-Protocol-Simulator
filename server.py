@@ -21,38 +21,58 @@ login_manager = LoginManager(block_duration)
 id_manager = TempIDManager()
 id_manager.listen()
 
-print(id_manager)
-print(id_manager.generate_entry('seb'))
-
 def start_server():
     global server_socket
     server_socket.listen()
     while True:
-        client_socket, addr = server_socket.accept()
-        client_thread = threading.Thread(target=handle_client, args=(client_socket, addr), daemon=True)
+        conn, addr = server_socket.accept()
+        client_thread = threading.Thread(target=handle_client_login, args=(conn, addr), daemon=True)
         client_thread.start()
 
-def handle_client(client_socket, addr):
-    received_data = client_socket.recv(1024)
+def handle_client_login(conn, addr):
+    global login_manager
+
+    received_data = conn.recv(1024)
     while received_data:
         credentials = DataManager.decode_object(received_data)
-        print('Received credentials.')
-        print(credentials)
-        logged_in_status = login_manager.login(credentials)
-        client_socket.send(DataManager.encode_object(logged_in_status))
+        logged_in_status = login_manager.login(credentials, addr)
+        conn.send(DataManager.encode_object(logged_in_status))
         
         if logged_in_status == LoginStatus.SUCCESS:
-            id_manager.generate_entry(credentials['username'])
             break
-
+        
         # Listen for more attempts from the client
-        received_data = client_socket.recv(1024)
+        received_data = conn.recv(1024)
 
-    login_manager.logout(credentials['username'])
-    client_socket.close()
+    # Client logged in - listen for requests from the client
+    print(f'[{addr}, {credentials["username"]}]: Logged in.')
+    handle_client_requests(conn, addr, credentials['username'])
 
+def handle_client_requests(conn, addr, username):
+    global id_manager
 
-print('Server listening for connections.')
+    data = conn.recv(20)
+    while data:
+        command = data.decode('utf-8')
+        print(f'> [{addr}, {username}]: ' + command)
+        if command == 'logout':
+            login_manager.logout(addr)
+            print(f'Logged out {username}.')
+            conn.close()
+            break
+        elif command == 'Download_tempID':
+            # Download temp id
+            tempID = id_manager.get_tempID(username)
+            print(f'TempID for {username}: {tempID}')
+            conn.send(tempID.encode('utf-8'))
+        elif command == 'Upload_contact_log':
+            # Uploads the contact log
+            pass
+
+        # Listen for more requests
+        data = conn.recv(20)
+
+print('> Server listening for connections.')
 start_server()
 
 
