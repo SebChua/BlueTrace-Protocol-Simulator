@@ -67,17 +67,31 @@ def handle_client_requests(conn, addr, username):
             conn.send(tempID.encode('utf-8'))
         elif command == 'Upload_contact_log':
             # Uploads the contact log
-            handle_upload(conn, addr, username)
+            contact_trace(conn, addr, username)
 
         # Listen for more requests
         data = conn.recv(20)
 
-def handle_upload(conn, addr, username):
+def contact_trace(conn, addr, username):
     log_length = conn.recv(64).decode('utf-8')
     log_length = int(log_length)
     contactlog = conn.recv(log_length).decode('utf-8')
     print(f'Received contactlog from [{username}, {addr}]:')
     print(contactlog)
+
+    print('> Contact Tracing from Contact Log')
+    contact_trace = []
+    log_entries = contactlog.split('\n')
+    for entry in log_entries:
+        # Map the tempIDs to valid usernames
+        entry_items = entry.split()
+        tempID = entry_items[0]
+        username = id_manager.get_username(tempID)
+        if username:
+            entry_items[0] = username
+            entry_items.append(tempID)
+            contact_trace.append(' '.join(entry_items))
+    print('\n'.join(contact_trace))
 
 print('> Server listening for connections.')
 start_server()
