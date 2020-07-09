@@ -1,8 +1,10 @@
 import sys
 import os
 import socket
+import datetime
+import threading
 from DataManager import DataManager
-from server_helpers.LoginManager import LoginStatus
+from server_helpers import LoginStatus, TempIDManager
 
 MAX_DELAY = 5
 
@@ -12,6 +14,7 @@ if len(sys.argv) != 4:
 
 server_IP = sys.argv[1]                 # IP of machine running server
 server_port = int(sys.argv[2])          # Port number used by server
+client_udp_ip = 'localhost'             # Assume localhost for assignment for client IP
 client_udp_port = int(sys.argv[3])      # Port client will listen for UDP traffic/beacons from other clients
 
 # Setup TCP socket to communicate with server
@@ -21,6 +24,7 @@ client_tcp_socket.connect((server_IP, server_port))
 
 # Setup UDP socket for P2P Beaconing
 client_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client_udp_socket.bind((client_udp_ip, client_udp_port))
 
 def login():
     '''Attempt client login to server'''
@@ -47,19 +51,20 @@ def login():
 def listen(username):
     '''Listen for command inputs from the user'''
     while True:
-        command = input('> ')
+        command = input('> ').split()
 
-        if command == 'logout':
+        if command[0] == 'logout':
             client_tcp_socket.send('logout'.encode('utf-8'))
             exit()
         # TODO: CHANGE COMMAND NAME LATER to Download_tempID
-        elif command == 'download':
+        elif command[0] == 'download':
             client_tcp_socket.send('Download_tempID'.encode('utf-8'))
-            tempID = client_tcp_socket.recv(1024).decode('utf-8')
-            print(f'TempID: {tempID}')
+            tempID_entry = client_tcp_socket.recv(1024).decode('utf-8')
+            tempID = TempIDManager.parse_tempID_entry(tempID_entry)
+            print(f'TempID: {tempID.tempID}')
 
         # TODO: CHANGE COMMAND NAME LATER to Upload_contact_log
-        elif command == 'upload':
+        elif command[0] == 'upload':
             client_tcp_socket.send('Upload_contact_log'.encode('utf-8'))
 
             # Inform server first the size of the contact log to be sent
@@ -72,17 +77,47 @@ def listen(username):
                 log_contents = f.read()
                 client_tcp_socket.send(log_contents.encode('utf-8'))
                 print(log_contents)
-
+        elif command[0] == 'Beacon':
+            if len(command) != 3:
+                print('Usage: Beacon <destination IP> <destination port>')
+                continue
+            
+            destIP = command[1]
+            destPort = int(command[2])
+            dest = (destIP, destPort)
+            client_tcp_socket.send('Download_tempID'.encode('utf-8'))
+            tempID_entry = client_tcp_socket.recv(1024)
+            print(tempID_entry.decode('utf-8'))
+            client_udp_socket.sendto(tempID_entry, dest)
         else:
-            print('Error, invalid command. The available commands are:')
+            print('Error, invalid comm  and. The available commands are:')
             print(' - Download_tempId: Downloads tempID from server')
             print(' - Upload_contact_log: Upload contact logs to the server')
             print(' - logout: Logs out fromm the server')
+            print(' - Beacon <destination IP> <destination port>: Send a beacon to another user.')
+
+def beacon_listen():
+    global client_udp_socket
+    while True:
+        # Listen for any received beacons from peers
+        beacon = client_udp_socket.recvfrom(1024)
+        curr_time = datetime.datetime.now()
+        print(f'Received Beacon at {curr_time}:')
+        print(beacon)
+
+        tempID = TempIDManager.parse_tempID_entry(beacon)
+        if tempID.created <= curr_time <= tempID.expiry:
+            print('Received a VALID beacon.')
+        else:
+            print('Beacon is INVALID')
+
 
 def start():
     username = login()
     if username:
         listen(username)
+        beacon_thread = threading.Thread(target=beacon_listen, daemon=True)
+        beacon_thread.start()
 
 start()
 

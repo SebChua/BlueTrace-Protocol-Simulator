@@ -39,14 +39,12 @@ def handle_client_login(conn, addr):
         conn.send(DataManager.encode_object(logged_in_status))
         
         if logged_in_status == LoginStatus.SUCCESS:
-            break
+            # Client logged in - listen for requests from the client
+            print(f'[{addr}, {credentials["username"]}]: Logged in.')
+            handle_client_requests(conn, addr, credentials['username'])
         
         # Listen for more attempts from the client
-        received_data = conn.recv(1024)
-
-    # Client logged in - listen for requests from the client
-    print(f'[{addr}, {credentials["username"]}]: Logged in.')
-    handle_client_requests(conn, addr, credentials['username'])
+        received_data = conn.recv(1024)    
 
 def handle_client_requests(conn, addr, username):
     global id_manager
@@ -63,8 +61,8 @@ def handle_client_requests(conn, addr, username):
         elif command == 'Download_tempID':
             # Download temp id
             tempID = id_manager.get_tempID(username)
-            print(f'TempID for {username}: {tempID}')
-            conn.send(tempID.encode('utf-8'))
+            print(f'TempID for {username}: {tempID.tempID}')
+            conn.send(repr(tempID).encode('utf-8'))
         elif command == 'Upload_contact_log':
             # Uploads the contact log
             contact_trace(conn, addr, username)
@@ -88,6 +86,7 @@ def contact_trace(conn, addr, username):
         tempID = entry_items[0]
         username = id_manager.get_username(tempID)
         if username:
+            # Form new contact tracing entry with usernmae and tempID
             entry_items[0] = username
             entry_items.append(tempID)
             contact_trace.append(' '.join(entry_items))
