@@ -9,7 +9,7 @@ from server_helpers import LoginStatus, TempIDManager, TempID, ContactLogEntry
 
 MAX_DELAY = 5
 CONTACT_LOG = 'z5161468_contactlog.txt'
-LOG_EXPIRY = 15                        # Logs need to be cleared after 3 minutes
+LOG_EXPIRY = 30                        # Logs need to be cleared after 3 minutes
 
 if len(sys.argv) != 4:
     print('Usage: {} server_IP server_port client_udp_port'.format(sys.argv[0]))
@@ -159,8 +159,13 @@ class Client:
         valid_beacons = []
         now = datetime.datetime.now()
 
+
         with open(CONTACT_LOG, 'r') as f:
             for entry in f:
+                if not entry.split():
+                    # Handle empty lines in the log entry
+                    continue
+        
                 log_entry = ContactLogEntry.parse(entry)
                 if (
                         log_entry.created <= now <= log_entry.expiry and
@@ -171,7 +176,7 @@ class Client:
                     print(f'Removing entry: {entry}')
 
         with open(CONTACT_LOG, 'w') as f:
-            f.writelines('{}\n'.format(entry) for entry in valid_beacons)
+            f.writelines(valid_beacons)
 
         print('Contact log cleaned')
         print('--------------------------------------')

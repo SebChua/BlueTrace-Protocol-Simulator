@@ -83,13 +83,15 @@ class Server:
         for entry in log_entries:
             # Map the tempIDs to valid usernames
             entry_items = entry.split()
-            tempID = entry_items[0]
-            username = self.id_manager.get_username(tempID)
-            if username:
-                # Form new contact tracing entry with username and tempID
-                entry_items[0] = username
-                entry_items.append(tempID)
-                contact_trace.append(' '.join(entry_items))
+            if entry_items:
+                # Handle any empty lines in the entry
+                tempID = entry_items[0]
+                username = self.id_manager.get_username(tempID)
+                if username:
+                    # Form new contact tracing entry with username and tempID
+                    entry_items[0] = username
+                    entry_items.append(tempID)
+                    contact_trace.append(' '.join(entry_items))
         print('\n'.join(contact_trace))
 
 Server(server_IP, server_port, block_duration).start()
