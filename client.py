@@ -5,11 +5,11 @@ import datetime
 import time
 import threading
 from DataManager import DataManager
-from server_helpers import LoginStatus, TempIDManager, TempID
+from server_helpers import LoginStatus, TempIDManager, TempID, ContactLogEntry
 
 MAX_DELAY = 5
 CONTACT_LOG = 'z5161468_contactlog.txt'
-LOG_EXPIRY = 180                        # Logs need to be cleared after 3 minutes
+LOG_EXPIRY = 15                        # Logs need to be cleared after 3 minutes
 
 if len(sys.argv) != 4:
     print('Usage: {} server_IP server_port client_udp_port'.format(sys.argv[0]))
@@ -59,6 +59,7 @@ class Client:
             if login_response == LoginStatus.SUCCESS:
                 # User successfully logged in and identified
                 self.username = username
+                self.tempID = TempID(self.username, created=datetime.datetime.min)
                 return login_response
 
         return login_response       
@@ -77,9 +78,8 @@ class Client:
             
             # TODO: CHANGE COMMAND NAME LATER to Download_tempID
             elif command[0] == 'download':
-                tempID = self.download_tempID()
-                self.tempID = tempID.tempID
-                print(f'TempID: {self.tempID}')
+                self.tempID = self.download_tempID()
+                print(f'TempID: {self.tempID.tempID}')
 
             # TODO: CHANGE COMMAND NAME LATER to Upload_contact_log
             elif command[0] == 'upload':
@@ -104,15 +104,15 @@ class Client:
         '''Download tempID entry from the server'''
         self.tcp_socket.send('Download_tempID'.encode('utf-8'))
         response = self.tcp_socket.recv(1024).decode('utf-8')
-        tempID_entry = TempID.parse(response)
-        return tempID_entry
+        tempID = TempID.parse(response)
+        return tempID
 
     def upload_contact_log(self):
         '''Upload client's contact log for contact tracing'''
         self.tcp_socket.send('Upload_contact_log'.encode('utf-8'))
 
         # Inform server first the size of the contact log to be sent
-        self.check_contactlog()
+        self.clean_contactlog()
         log_size = os.stat(CONTACT_LOG).st_size
         self.tcp_socket.send(str(log_size).encode('utf-8'))
 
@@ -124,43 +124,57 @@ class Client:
 
     def send_beacon(self, destIP, destPort):
         '''Send Beacon to Peer specified by (destIP, destPort)'''
-        tempID_entry = self.download_tempID()
-        print(tempID_entry.contactlog_entry())
-        self.udp_socket.sendto(repr(tempID_entry).encode('utf-8'), (destIP, destPort))
+        log_entry = ContactLogEntry(self.tempID.tempID, self.tempID.created, self.tempID.expiry)
+        # Remove the inserted date in the output string
+        log_entry.print()
+        self.udp_socket.sendto(repr(log_entry).encode('utf-8'), (destIP, destPort))
 
     def beacon_listen(self):
         '''Listen for any received beacons from peers'''
         while True:
             beacon, addr = self.udp_socket.recvfrom(1024)
-            tempID = TempID.parse(beacon.decode('utf-8'))
-            curr_time = datetime.datetime.now()
+            log_entry = ContactLogEntry.parse(beacon.decode('utf-8'))
+            now = datetime.datetime.now()
 
             print(f'[{addr}]: Received Beacon:')
-            print(repr(tempID))
-            print(f'Current time is: {curr_time}')
+            log_entry.print()
+            print(f'Current time is: {now}')
 
-            if tempID.created <= curr_time <= tempID.expiry:
+            if log_entry.created <= now <= log_entry.expiry:
                 # Write the beacon to the client's contact log
                 print('The beacon is valid.')
-                self.check_contactlog()
+                self.clean_contactlog()
                 with open(CONTACT_LOG, 'a') as f:
-                    f.write(tempID.contactlog_entry() + '\n')
+                    log_entry.update_inserted_time()
+                    f.write(repr(log_entry) + '\n')
 
             else:
                 print('The beacon is invalid.')
     
-    def check_contactlog(self):
-        '''Checks if contactlog is outdated'''
-        if os.path.isfile(CONTACT_LOG):
-            now = time.time()
-            log_created_time = os.path.getctime(CONTACT_LOG)
-            if now - log_created_time > LOG_EXPIRY:
-                # Contact log expired and needs to be cleared
-                os.remove(CONTACT_LOG)
-        
-        # If contact log is deleted, create a new empty one
-        f = open(CONTACT_LOG, 'w')
-        f.close()
+    def clean_contactlog(self):
+        '''Remove any expired beacons or outdated logs'''
+        print('--------------------------------------')
+        print('Removing expired beacons.')
+
+        valid_beacons = []
+        now = datetime.datetime.now()
+
+        with open(CONTACT_LOG, 'r') as f:
+            for entry in f:
+                log_entry = ContactLogEntry.parse(entry)
+                if (
+                        log_entry.created <= now <= log_entry.expiry and
+                        (now - log_entry.inserted).seconds < LOG_EXPIRY
+                   ):
+                    valid_beacons.append(entry)
+                else:
+                    print(f'Removing entry: {entry}')
+
+        with open(CONTACT_LOG, 'w') as f:
+            f.writelines('{}\n'.format(entry) for entry in valid_beacons)
+
+        print('Contact log cleaned')
+        print('--------------------------------------')
 
 
 
