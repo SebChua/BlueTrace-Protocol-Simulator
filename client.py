@@ -181,6 +181,4 @@ class Client:
         print('Contact log cleaned')
         print('--------------------------------------')
 
-
-
 Client(server_IP, server_port, client_udp_ip, client_udp_port).start()
