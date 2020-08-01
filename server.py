@@ -44,8 +44,13 @@ class Server:
                 self.handle_requests(conn, addr, credentials['username'])
             else:
                 print(f'[{addr}, {credentials["username"]}]: Attempted login.')
-            # Listen for more attempts from the client
-            received_data = conn.recv(1024)
+            
+            try:
+                # Listen for more attempts from the client
+                received_data = conn.recv(1024)
+            except:
+                # Connection has been closed due to logout
+                received_data = None
 
     def handle_requests(self, conn, addr, username):
         data = conn.recv(20)

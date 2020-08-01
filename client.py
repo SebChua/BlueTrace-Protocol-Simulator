@@ -61,6 +61,8 @@ class Client:
                 self.username = username
                 self.tempID = TempID(self.username, created=datetime.datetime.min)
                 return login_response
+            elif login_response == LoginStatus.BLOCKING or login_response == LoginStatus.BLOCKED:
+                exit()
 
         return login_response       
     

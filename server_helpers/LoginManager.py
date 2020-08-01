@@ -25,7 +25,6 @@ class LoginManager:
             return True
 
         print(f'Account: {username} is blocked due to too many attempts')
-        print(self.attempts)
         return False
     
     def login(self, credentials, addr):
@@ -50,6 +49,10 @@ class LoginManager:
                 # Matched a valid user but wrong password
                 attempt_record = self.attempts.get(username, (0, None))
                 self.attempts[username] = (attempt_record[0] + 1, time.time())
+                print(self.attempts)
+                if self.attempts[username][0] == MAX_ATTEMPTS:
+                    return LoginStatus.BLOCKING
+                
                 return LoginStatus.WRONGPASSWORD
 
         credential_file.close()
@@ -62,4 +65,5 @@ class LoginStatus(str, enum.Enum):
     SUCCESS = 'Welcome to the BlueTrace Simulator.'
     NOMATCH = 'No account connected to the given username.'
     WRONGPASSWORD = 'Invalid Password. Please try again.'
+    BLOCKING = 'Invalid Password. Your account has been blocked. Please try again later.'
     BLOCKED = 'Your account has been blocked due to multiple attempts. Please try again later.'
