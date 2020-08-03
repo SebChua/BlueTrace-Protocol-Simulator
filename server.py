@@ -24,6 +24,7 @@ class Server:
         self.id_manager.listen()
     
     def start(self):
+        '''Start the server'''
         self.socket.listen()
         print('> Server listening for connections.')
         while True:
@@ -32,6 +33,7 @@ class Server:
             client_thread.start()
 
     def handle_login(self, conn, addr):
+        '''Handle a client connection's attempt to login'''
         received_data = conn.recv(1024)
         while received_data:
             credentials = DataManager.decode_object(received_data)
@@ -53,6 +55,7 @@ class Server:
                 received_data = None
 
     def handle_requests(self, conn, addr, username):
+        '''Listen for and handle a client's requests'''
         data = conn.recv(20)
         while data:
             command = data.decode('utf-8')
@@ -76,6 +79,7 @@ class Server:
             data = conn.recv(20)
 
     def contact_trace(self, conn, addr, username):
+        '''Map TempIDs in a user's contact log to actual usernames'''
         # Obtain client's contact log
         log_length = int(conn.recv(64).decode('utf-8'))
         contactlog = conn.recv(log_length).decode('utf-8')

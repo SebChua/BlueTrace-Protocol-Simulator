@@ -7,9 +7,9 @@ import threading
 from DataManager import DataManager
 from server_helpers import LoginStatus, TempIDManager, TempID, ContactLogEntry
 
-MAX_DELAY = 5
+MAX_DELAY = 10
 CONTACT_LOG = 'z5161468_contactlog.txt'
-LOG_EXPIRY = 30                        # Logs need to be cleared after 3 minutes
+LOG_EXPIRY = 180                        # Logs need to be cleared after 3 minutes
 
 if len(sys.argv) != 4:
     print('Usage: {} server_IP server_port client_udp_port'.format(sys.argv[0]))
@@ -32,6 +32,7 @@ class Client:
         self.udp_socket.bind((udp_IP, udp_port))
 
     def start(self):
+        '''Start the client'''
         login_result = self.login()
         if login_result == LoginStatus.BLOCKED:
             # Username has been blocked and prompt should exit
@@ -67,6 +68,7 @@ class Client:
         return login_response       
     
     def logout(self):
+        '''Log out client from the server'''
         self.tcp_socket.send('logout'.encode('utf-8'))
         exit()
 
@@ -78,13 +80,11 @@ class Client:
             if command[0] == 'logout':
                 self.logout()
             
-            # TODO: CHANGE COMMAND NAME LATER to Download_tempID
-            elif command[0] == 'download':
+            elif command[0] == 'Download_tempID':
                 self.tempID = self.download_tempID()
                 print(f'TempID: {self.tempID.tempID}')
 
-            # TODO: CHANGE COMMAND NAME LATER to Upload_contact_log
-            elif command[0] == 'upload':
+            elif command[0] == 'Upload_contact_log':
                 self.upload_contact_log()
             
             elif command[0] == 'Beacon':
@@ -97,7 +97,7 @@ class Client:
             
             else:
                 print('Error, invalid command. The available commands are:')
-                print(' - Download_tempId: Downloads tempID from server')
+                print(' - Download_tempID: Downloads tempID from server')
                 print(' - Upload_contact_log: Upload contact logs to the server')
                 print(' - logout: Logs out from the server')
                 print(' - Beacon <destination IP> <destination port>: Send a beacon to another user.')
@@ -127,7 +127,6 @@ class Client:
     def send_beacon(self, destIP, destPort):
         '''Send Beacon to Peer specified by (destIP, destPort)'''
         log_entry = ContactLogEntry(self.tempID.tempID, self.tempID.created, self.tempID.expiry)
-        # Remove the inserted date in the output string
         log_entry.print()
         self.udp_socket.sendto(repr(log_entry).encode('utf-8'), (destIP, destPort))
 
@@ -156,11 +155,10 @@ class Client:
     def clean_contactlog(self):
         '''Remove any expired beacons or outdated logs'''
         print('--------------------------------------')
-        print('Removing expired beacons.')
+        print('Cleaning Contact Log...')
 
         valid_beacons = []
         now = datetime.datetime.now()
-
 
         with open(CONTACT_LOG, 'r') as f:
             for entry in f:
@@ -180,7 +178,6 @@ class Client:
         with open(CONTACT_LOG, 'w') as f:
             f.writelines(valid_beacons)
 
-        print('Contact log cleaned')
         print('--------------------------------------')
 
 Client(server_IP, server_port, client_udp_ip, client_udp_port).start()
